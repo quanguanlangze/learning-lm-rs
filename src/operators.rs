@@ -70,26 +70,103 @@ pub fn masked_softmax(y: &mut Tensor<f32>) {
     }
 }
 
+pub fn add(x: &mut Tensor<f32>, y: &Tensor<f32>) {
+    let len = x.size();
+    assert!(len == y.size());
+    let x_ = unsafe { x.data_mut() };
+    let y_ = y.data();
+    for i in 0..len {
+        x_[i] += y_[i];
+    }
+}
+// 请在`src/operators.rs`中实现RMS Normalization，其公式为：
+
+// $$
+// y_i=\frac{w×x_i}{\sqrt{ \frac{1}{n} \sum_{j} x_{ij}^2 +\epsilon}}
+// $$
+
+// 注意：
+
+// 参数 $`w`$ 是个一维向量，与各个向量长度相同，且进行element-wise乘法。
+
+// - 用`src/operators.rs`中的测例检验你的实现是否正确。
 pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: f32) {
-    todo!("实现 rms_norm，计算前做一些必要的检查会帮助你后续调试")
+    // todo!("实现 rms_norm，计算前做一些必要的检查会帮助你后续调试")
+    
+    let shape = y.shape();
+    assert!(shape == x.shape());
+    let n = shape[0];
+    let d = shape[1];
+    assert!(w.size() == d);
+
+    let _y = unsafe { y.data_mut() };
+    let _x = x.data();
+    let _w = w.data();
+
+    for i in 0..n {
+        let mut sum = 0.0;
+        for j in 0..d {
+            sum += _x[i * d + j] * _x[i * d + j];
+        }
+        sum = sum / d  as f32 + epsilon;
+        sum = sum.sqrt();
+        for j in 0..d {
+            _y[i * d + j] = _w[j] * _x[i * d + j] / sum;
+        }
+    }
+
 }
 
 // y = sigmoid(x) * x * y
 // hint: this is an element-wise operation
 pub fn silu(y: &mut Tensor<f32>, x: &Tensor<f32>) {
-    // let len = y.size();
-    // assert!(len == x.size());
+    let len = y.size();
+    assert!(len == x.size());
 
-    // let _y = unsafe { y.data_mut() };
-    // let _x = x.data();
+    let _y = unsafe { y.data_mut() };  // unsafe 用于获取可变引用，data_mut 返回一个可变引用
+    let _x = x.data(); // data 返回一个不可变引用
 
-    todo!("实现 silu，这里给了一些前期准备工作的提示，你可以参考")
+    // 0..len 生成一个 0 到 len-1 的 range
+    for i in 0..len {
+        let sigmoid_x = 1.0 / (1.0 + (-_x[i]).exp());
+        let silu_x = _x[i] * sigmoid_x;
+        _y[i] = silu_x * _y[i];
+    }
+    // todo!("实现 silu，这里给了一些前期准备工作的提示，你可以参考")
 }
 
 // C = beta * C + alpha * A @ B^T
 // hint: You don't need to do an explicit transpose of B
 pub fn matmul_transb(c: &mut Tensor<f32>, beta: f32, a: &Tensor<f32>, b: &Tensor<f32>, alpha: f32) {
-    todo!("实现 matmul_transb，计算前做一些必要的检查会帮助你后续调试");
+    // todo!("实现 matmul_transb，计算前做一些必要的检查会帮助你后续调试");
+    let _c = unsafe { c.data_mut() };
+    let c_shape = _c.len();
+    let a_shape = a.shape();
+    let b_shape = b.shape();
+    assert!(c_shape == a_shape[0] * b_shape[0]);
+
+    let _a = a.data();
+    let _b = b.data();
+
+    let m = a_shape[0];
+    let n = b_shape[0];
+    let k = a_shape[1];
+    assert!(k == b_shape[1]);
+
+
+    // A是m*k的矩阵，B是n*k的矩阵，C是m*n的矩阵
+    // C = beta * C + alpha * A @ B^T
+    for i in 0..m {
+        for j in 0..n {
+            let mut sum = 0.0;
+            for p in 0..k {
+                sum += _a[i * k + p] * _b[j * k + p];
+            }
+            _c[i * n + j] = beta * _c[i * n + j] + alpha * sum;
+        }
+    }
+
+
 }
 
 // Dot product of two tensors (treated as vectors)

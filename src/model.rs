@@ -3,7 +3,7 @@ use std::vec;
 
 use crate::config::LlamaConfigJson;
 use crate::kvcache::KVCache;
-use crate::operators as OP;
+use crate::operators::{self as OP};
 use crate::params::LLamaParams;
 use crate::tensor::Tensor;
 use safetensors::SafeTensors;
@@ -167,7 +167,19 @@ fn mlp(
     rms_w: &Tensor<f32>,
     eps: f32,
 ) {
-    todo!("Implement mlp");
+    //hidden = rms_norm(residual)
+// gate = hidden @ gate_weight.T
+// up = hidden @ up_weight.T
+// itermediate = gate * sigmoid(gate) * up ## silu
+// output = itermediate @ down_weight.T
+// residual = output + residual
+    // todo!("Implement mlp");
+    OP::rms_norm(hidden_states, residual, rms_w, eps);
+    OP::matmul_transb(gate, 0., hidden_states, w_gate, 1.);
+    OP::matmul_transb(up, 0., hidden_states, w_up, 1.);
+    OP::silu(up, gate);
+    OP::matmul_transb(hidden_states, 0., up, w_down, 1.);
+    OP::add(residual, hidden_states);
 }
 
 #[test]
